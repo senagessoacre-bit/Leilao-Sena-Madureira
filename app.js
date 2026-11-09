@@ -34,7 +34,7 @@ function novo() {
 }
 
 var S = {
-  view: 'novo', reports: [], userId: null, user: null, urls: {}, exp: {},
+  view: 'novo', reports: [], userId: undefined, user: null, urls: {}, exp: {},
   ft: 'todos', busca: '', openIds: {}, confirmDel: null, editId: null, editBase: null,
   uploading: false, draft: novo()
 };
