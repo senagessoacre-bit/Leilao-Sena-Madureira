@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Vistoria de Leilão</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
 <div class="wrap">
@@ -25,7 +25,7 @@
   <!-- configuração pendente -->
   <section class="sec box-login" id="setup" hidden>
     <h2>Falta configurar</h2>
-    <p style="margin:0">Abra o arquivo <strong>config.js</strong> e preencha o endereço e a chave do seu projeto Supabase. O passo a passo está no arquivo LEIA-ME.md.</p>
+    <p style="margin:0" id="setup-msg">Abra o arquivo <strong>config.js</strong> e preencha o endereço e a chave do seu projeto Supabase. O passo a passo está no arquivo LEIA-ME.md.</p>
   </section>
 
   <!-- login -->
@@ -114,8 +114,9 @@
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="config.js"></script>
-<script src="app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"><\/script>')</script>
+<script src="config.js?v=2"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>

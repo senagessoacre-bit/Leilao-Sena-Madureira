@@ -86,7 +86,13 @@ function aplicarSessao(session) {
 }
 
 function iniciar() {
-  if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY || !window.supabase) { mostrar('setup'); return; }
+  var semConfig = !cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY;
+  if (semConfig || !window.supabase) {
+    $('#setup-msg').innerHTML = semConfig
+      ? 'O arquivo <strong>config.js</strong> publicado neste site está vazio. Abra o <strong>config.js</strong> no seu repositório do GitHub, confira se tem o endereço e a chave do Supabase, salve e aguarde um ou dois minutos. Depois atualize esta página com Ctrl+F5.'
+      : 'A biblioteca do Supabase não carregou. Verifique a conexão com a internet e atualize a página com Ctrl+F5.';
+    mostrar('setup'); return;
+  }
   sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
   sb.auth.onAuthStateChange(function (ev, session) { setTimeout(function () { aplicarSessao(session); }, 0); });
   sb.auth.getSession().then(function (r) { aplicarSessao(r.data && r.data.session); });
