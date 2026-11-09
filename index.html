@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex,nofollow">
+<title>Vistoria de Leilão</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Vistoria de Leilão</h1>
+      <p>Cadastro de veículos e máquinas com ano, modelo, placa, chassi, defeitos e fotos.</p>
+    </div>
+    <div class="userbar" id="userbar" hidden>
+      <span id="quem"></span>
+      <button type="button" class="btn sm ghost" id="btn-sair">Sair</button>
+    </div>
+  </header>
+
+  <!-- configuração pendente -->
+  <section class="sec box-login" id="setup" hidden>
+    <h2>Falta configurar</h2>
+    <p style="margin:0">Abra o arquivo <strong>config.js</strong> e preencha o endereço e a chave do seu projeto Supabase. O passo a passo está no arquivo LEIA-ME.md.</p>
+  </section>
+
+  <!-- login -->
+  <form class="sec box-login" id="login" hidden novalidate>
+    <h2>Entrar</h2>
+    <p class="hint">Acesso só para pessoas autorizadas. Use o e-mail e a senha cadastrados pelo administrador.</p>
+    <div class="field"><label for="l-email">E-mail</label><input type="text" id="l-email" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
+    <div class="field"><label for="l-senha">Senha</label><input type="password" id="l-senha" autocomplete="current-password" style="width:100%;min-height:46px;padding:10px 12px;font:inherit;font-size:16px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px"></div>
+    <div class="erros" id="l-erro" role="alert" hidden></div>
+    <button type="submit" class="btn primary" id="l-btn">Entrar</button>
+  </form>
+
+  <!-- sistema -->
+  <div class="stack" id="app" hidden>
+    <div class="tabs" role="tablist" aria-label="Seções">
+      <button role="tab" data-v="novo" id="t-novo" aria-selected="true">Cadastrar</button>
+      <button role="tab" data-v="lista" id="t-lista" aria-selected="false">Cadastrados <span class="badge num" id="c-rel">0</span></button>
+    </div>
+
+    <!-- CADASTRAR -->
+    <form id="p-novo" class="stack" novalidate autocomplete="off">
+      <div class="aviso" id="aviso-edit" hidden></div>
+
+      <section class="sec" aria-labelledby="h-id">
+        <h2 id="h-id">Identificação</h2>
+        <div class="field">
+          <span class="lbl" id="l-tipo">Tipo</span>
+          <div class="seg" role="group" aria-labelledby="l-tipo" id="seg-tipo">
+            <button type="button" data-t="veiculo" aria-pressed="true">Veículo</button>
+            <button type="button" data-t="maquina" aria-pressed="false">Máquina</button>
+          </div>
+        </div>
+        <div class="grid">
+          <div class="field"><label for="f-placa" id="l-placa">Placa</label><input type="text" id="f-placa" class="mono" placeholder="ABC-1D23" maxlength="12"></div>
+          <div class="field"><label for="f-chassi">Chassi</label><input type="text" id="f-chassi" class="mono" placeholder="9BWZZZ377VT004251" maxlength="25" autocapitalize="characters"></div>
+          <div class="field"><label for="f-modelo">Marca e modelo</label><input type="text" id="f-modelo" placeholder="Ex.: Toyota Hilux CD 4x4" maxlength="80"></div>
+          <div class="field"><label for="f-ano">Ano</label><input type="text" id="f-ano" inputmode="numeric" placeholder="Ex.: 2021 ou 2020/2021" maxlength="9"></div>
+        </div>
+        <p class="hint" id="hint-chassi">O chassi do veículo tem 17 letras e números, sem I, O e Q.</p>
+      </section>
+
+      <section class="sec" aria-labelledby="h-fotos">
+        <h2 id="h-fotos">Fotos</h2>
+        <p class="hint">Frente, traseira, laterais, interior, painel e os pontos com defeito. Até 12 fotos.</p>
+        <div class="fotos" id="fotos"></div>
+        <input type="file" id="f-fotos" accept="image/*" multiple hidden>
+        <p class="hint" id="foto-status" role="status"></p>
+      </section>
+
+      <section class="sec" aria-labelledby="h-def">
+        <h2 id="h-def">Defeitos</h2>
+        <p class="hint">Se o equipamento não tem defeitos aparentes, deixe em branco.</p>
+        <div class="defs" id="defs"></div>
+        <div><button type="button" class="btn ghost" id="btn-add-def">+ Registrar defeito</button></div>
+      </section>
+
+      <section class="sec" aria-labelledby="h-fim">
+        <h2 id="h-fim">Fechamento</h2>
+        <div class="field"><label for="f-vistoriador">Quem fez a vistoria</label><input type="text" id="f-vistoriador" placeholder="Nome completo" maxlength="80"></div>
+        <div class="field"><label for="f-obs">Observações</label><textarea id="f-obs" placeholder="Estado geral, documentos pendentes, situação do motor…"></textarea></div>
+        <div class="erros" id="erros" role="alert" hidden></div>
+        <div class="actions">
+          <button type="submit" class="btn primary" id="btn-enviar">Salvar cadastro</button>
+          <button type="button" class="btn ghost" id="btn-limpar">Limpar formulário</button>
+        </div>
+      </section>
+    </form>
+
+    <!-- CADASTRADOS -->
+    <section id="p-lista" class="stack" hidden style="gap:14px">
+      <div class="toolbar">
+        <div class="search"><label class="lbl" for="busca" style="display:block;margin-bottom:5px">Buscar</label><input type="search" id="busca" placeholder="Placa, chassi ou modelo"></div>
+        <div class="chips" id="chips-tipo" role="group" aria-label="Filtrar por tipo">
+          <button type="button" class="chip" data-ft="todos" aria-pressed="true">Todos</button>
+          <button type="button" class="chip" data-ft="veiculo" aria-pressed="false">Veículos</button>
+          <button type="button" class="chip" data-ft="maquina" aria-pressed="false">Máquinas</button>
+        </div>
+      </div>
+      <div class="actions" id="export" hidden>
+        <button type="button" class="btn sm" data-act="exportar">Exportar lista (CSV)</button>
+        <button type="button" class="btn sm ghost" data-act="atualizar">Atualizar</button>
+      </div>
+      <div class="list" id="lista"></div>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
