@@ -417,8 +417,13 @@ $('#lista').addEventListener('toggle', function (e) {
     S.openIds = {}; S.openIds[id] = true;
     $$('details.rep[open]', $('#lista')).forEach(function (o) { if (o !== d) o.open = false; });
     var r = S.reports.find(function (x) { return x.id === id; });
-    if (r) garantirUrls(r.fotos).then(function () { if (S.openIds[id]) renderLista(); });
-  } else delete S.openIds[id];
+    if (r) {
+      var agora = Date.now();
+      var falta = (r.fotos || []).some(function (p) { return !S.urls[p] || S.exp[p] < agora; });
+      /* só redesenha quando faltava alguma foto; evita redesenhar em ciclo */
+      if (falta) garantirUrls(r.fotos).then(function () { if (S.openIds[id]) renderLista(); });
+    }
+  } else if (S.openIds[id]) delete S.openIds[id];
 }, true);
 
 /* exportação */
