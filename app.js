@@ -45,7 +45,7 @@ function parseMoeda(t) {
 }
 function novo() {
   var p = loadPrefs();
-  return { id: uuid(), tipo: 'veiculo', placa: '', chassi: '', modelo: '', ano: '', cor: '', motor: '', lote: '', situacao: '', uf: p.uf || 'AC', detran: '0,00', valor: '',
+  return { id: uuid(), tipo: 'veiculo', placa: '', chassi: '', modelo: '', ano: '', cor: '', motor: '', lote: '', situacao: '', uf: p.uf || 'AC', valor: '',
     fotos: [], novas: [], defeitos: [], obs: '', vistoriador: p.vistoriador || '' };
 }
 
@@ -153,7 +153,6 @@ function card(r) {
     '<div><dt>Ano</dt><dd>' + esc(r.ano) + '</dd></div><div><dt>Cor</dt><dd>' + esc(r.cor || '—') + '</dd></div>' +
     '<div><dt>Motor</dt><dd style="font-family:var(--font-mono);letter-spacing:.06em">' + esc(r.motor || '—') + '</dd></div>' +
     '<div><dt>Situação</dt><dd>' + esc(r.situacao || '—') + '</dd></div><div><dt>UF</dt><dd>' + esc(r.uf || '—') + '</dd></div>' +
-    '<div><dt>Detran</dt><dd class="num">' + (r.detran == null ? '—' : 'R$ ' + fmtMoeda(r.detran)) + '</dd></div>' +
     '<div><dt>Valor inicial para conserto</dt><dd class="num">' + (r.valor_conserto == null ? '—' : 'R$ ' + fmtMoeda(r.valor_conserto)) + '</dd></div>' +
     '<div><dt>Vistoria</dt><dd>' + fmtData(r.data) + (r.vistoriador ? ' por ' + esc(r.vistoriador) : '') + '</dd></div></dl>';
   if (fs.length) h += '<div><h3 class="sub">Fotos</h3><div class="fotos">' + fs.map(function (p, i) {
@@ -233,7 +232,7 @@ function preencher() {
   $('#f-placa').value = d.placa; $('#f-chassi').value = d.chassi; $('#f-modelo').value = d.modelo; $('#f-ano').value = d.ano;
   $('#f-vistoriador').value = d.vistoriador; $('#f-obs').value = d.obs;
   $('#f-cor').value = d.cor; $('#f-motor').value = d.motor; $('#f-lote').value = d.lote;
-  $('#f-situacao').value = d.situacao; $('#f-uf').value = d.uf; $('#f-detran').value = d.detran; $('#f-valor').value = d.valor;
+  $('#f-situacao').value = d.situacao; $('#f-uf').value = d.uf; $('#f-valor').value = d.valor;
   syncTipo(); renderFotos(); renderDefeitos();
   var ae = $('#aviso-edit');
   if (S.editId) { ae.hidden = false; ae.textContent = 'Editando o cadastro de ' + ((S.editBase && S.editBase.placa) || '') + '. As alterações substituem o cadastro salvo.'; } else ae.hidden = true;
@@ -242,14 +241,14 @@ function preencher() {
 }
 $('#f-situacao').innerHTML = '<option value="">Selecione</option>' + SITUACOES.map(function (x) { return '<option>' + x + '</option>'; }).join('');
 $('#f-uf').innerHTML = UFS.map(function (x) { return '<option>' + x + '</option>'; }).join('');
-['f-detran', 'f-valor'].forEach(function (id) {
+['f-valor'].forEach(function (id) {
   document.getElementById(id).addEventListener('blur', function (e) {
     var v = parseMoeda(e.target.value);
     if (v !== null && !isNaN(v)) { e.target.value = fmtMoeda(v); S.draft[CAMPOS[id]] = e.target.value; }
   });
 });
 var CAMPOS = { 'f-placa': 'placa', 'f-chassi': 'chassi', 'f-modelo': 'modelo', 'f-ano': 'ano', 'f-vistoriador': 'vistoriador', 'f-obs': 'obs',
-  'f-cor': 'cor', 'f-motor': 'motor', 'f-lote': 'lote', 'f-situacao': 'situacao', 'f-uf': 'uf', 'f-detran': 'detran', 'f-valor': 'valor' };
+  'f-cor': 'cor', 'f-motor': 'motor', 'f-lote': 'lote', 'f-situacao': 'situacao', 'f-uf': 'uf', 'f-valor': 'valor' };
 Object.keys(CAMPOS).forEach(function (id) {
   var el = document.getElementById(id);
   var ev = el.tagName === 'SELECT' ? 'change' : 'input';
@@ -373,8 +372,6 @@ function validar() {
   if (!d.motor.trim()) bad('f-motor', 'Informe o número do motor.');
   if (!d.situacao) bad('f-situacao', 'Escolha a situação.');
   if (!d.uf) bad('f-uf', 'Escolha a UF.');
-  var dt = parseMoeda(d.detran);
-  if (d.detran.trim() && (isNaN(dt) || dt < 0)) bad('f-detran', 'Informe o valor do Detran em reais, como 0,00.');
   var vc = parseMoeda(d.valor);
   if (vc === null) bad('f-valor', 'Informe o valor inicial para conserto.');
   else if (isNaN(vc) || vc < 0) bad('f-valor', 'Informe o valor inicial para conserto em reais, como 7.000,00.');
@@ -397,7 +394,7 @@ $('#p-novo').addEventListener('submit', async function (e) {
   var row = {
     tipo: d.tipo, placa: d.placa.trim().toUpperCase(), chassi: limpo(d.chassi), modelo: d.modelo.trim(), ano: d.ano.trim().replace(/\s/g, ''),
     cor: d.cor.trim(), motor: d.motor.trim().toUpperCase(), lote: d.lote.trim(), situacao: d.situacao, uf: d.uf,
-    detran: d.detran.trim() ? parseMoeda(d.detran) : 0, valor_conserto: parseMoeda(d.valor),
+    valor_conserto: parseMoeda(d.valor),
     fotos: d.fotos.slice(),
     defeitos: d.defeitos.map(function (x) { return { id: x.id, item: x.item.trim(), gravidade: x.gravidade, descricao: x.descricao.trim() }; }),
     obs: d.obs.trim(), vistoriador: d.vistoriador.trim(), atualizado_em: new Date().toISOString()
@@ -444,7 +441,7 @@ async function acoes(e) {
     S.editId = r.id; S.editBase = r;
     S.draft = { id: r.id, tipo: r.tipo, placa: r.placa, chassi: r.chassi, modelo: r.modelo, ano: r.ano,
       cor: r.cor || '', motor: r.motor || '', lote: r.lote || '', situacao: r.situacao || '', uf: r.uf || 'AC',
-      detran: r.detran == null ? '0,00' : fmtMoeda(r.detran), valor: r.valor_conserto == null ? '' : fmtMoeda(r.valor_conserto), fotos: (r.fotos || []).slice(), novas: [],
+      valor: r.valor_conserto == null ? '' : fmtMoeda(r.valor_conserto), fotos: (r.fotos || []).slice(), novas: [],
       defeitos: (r.defeitos || []).map(function (x) { return { id: x.id, item: x.item, gravidade: x.gravidade, descricao: x.descricao }; }), obs: r.obs || '', vistoriador: r.vistoriador || '' };
     S.view = 'novo'; preencher(); render(); window.scrollTo(0, 0);
   } else if (act === 'del') { S.confirmDel = rid; renderLista(); }
