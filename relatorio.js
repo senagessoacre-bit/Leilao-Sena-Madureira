@@ -134,7 +134,7 @@ async function ficha(r, ctx) {
   cheia(ws, 'Chassi ou série', r.chassi, { mono: true });
   par(ws, 'Cor', r.cor || '—', 'Motor', r.motor || '—');
   par(ws, 'Situação', r.situacao || '—', 'UF', r.uf || '—');
-  par(ws, 'Detran', moeda(r.detran), 'Valor inicial para conserto', moeda(r.valor_conserto));
+  cheia(ws, 'Valor inicial para conserto', moeda(r.valor_conserto));
   par(ws, 'Vistoriador', r.vistoriador || '—', 'Data da vistoria', fmtData(r.data));
   espaco(ws, 8);
 
@@ -234,7 +234,7 @@ async function geral(lista, ctx, filtro) {
   var ws = wb.addWorksheet('Relação de lotes');
   var COLS = [
     ['LOTE', 7], ['MARCA E MODELO', 26], ['PLACA', 12], ['CHASSI / SÉRIE', 22], ['ANO', 10], ['COR', 11],
-    ['MOTOR', 16], ['SITUAÇÃO', 15], ['DETRAN (R$)', 11], ['UF', 5], ['VALOR INICIAL PARA CONSERTO (R$)', 17], ['DEFEITOS', 44]
+    ['MOTOR', 16], ['SITUAÇÃO', 15], ['UF', 5], ['VALOR INICIAL PARA CONSERTO (R$)', 17], ['DEFEITOS', 44]
   ];
   ws.columns = COLS.map(function (c) { return { width: c[1] }; });
   var NC = COLS.length;
@@ -257,19 +257,19 @@ async function geral(lista, ctx, filtro) {
   }
   hd.height = 44;
   var topo = hd.number;
-  var CENTRO = { 1: 1, 3: 1, 5: 1, 6: 1, 8: 1, 10: 1 };
+  var CENTRO = { 1: 1, 3: 1, 5: 1, 6: 1, 8: 1, 9: 1 };
 
   lista.forEach(function (r, i) {
     var ds = r.defeitos || [];
     var txt = ds.length ? ds.map(function (d) { return '• ' + d.item + ' (' + (GNOME[d.gravidade] || '') + '): ' + d.descricao; }).join('\n') : 'Sem defeitos aparentes';
     var row = ws.addRow([r.lote || '', r.modelo, r.placa, r.chassi, r.ano, r.cor || '', r.motor || '', r.situacao || '',
-      r.detran == null ? '' : Number(r.detran), r.uf || '', r.valor_conserto == null ? '' : Number(r.valor_conserto), txt]);
+      r.uf || '', r.valor_conserto == null ? '' : Number(r.valor_conserto), txt]);
     var fill = i % 2 ? 'FFF4F6F5' : null;
     for (var c2 = 1; c2 <= NC; c2++) {
       var ce = row.getCell(c2);
-      var num = c2 === 9 || c2 === 11;
+      var num = c2 === 10;
       celula(ce, { v: 'middle', h: num ? 'right' : (CENTRO[c2] ? 'center' : 'left'), fill: fill, mono: c2 === 4 || c2 === 7,
-        size: (c2 === 4 || c2 === 7 || c2 === 12) ? 10 : 11, color: (c2 === 12 && !ds.length) ? CINZA : TINTA, italic: c2 === 12 && !ds.length, bold: c2 === 11 });
+        size: (c2 === 4 || c2 === 7 || c2 === 11) ? 10 : 11, color: (c2 === 11 && !ds.length) ? CINZA : TINTA, italic: c2 === 11 && !ds.length, bold: c2 === 10 });
       if (num) ce.numFmt = '#,##0.00';
       if (c2 === 1) ce.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     }
@@ -287,7 +287,7 @@ async function geral(lista, ctx, filtro) {
   ws.autoFilter = { from: { row: topo, column: 1 }, to: { row: topo, column: NC } };
   ws.pageSetup = {
     paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0,
-    horizontalCentered: true, printArea: 'A1:L' + ws.rowCount, printTitlesRow: topo + ':' + topo,
+    horizontalCentered: true, printArea: 'A1:K' + ws.rowCount, printTitlesRow: topo + ':' + topo,
     margins: { left: 0.3, right: 0.3, top: 0.5, bottom: 0.6, header: 0.3, footer: 0.3 }
   };
   ws.headerFooter = { oddFooter: '&L&9Vistoria de Leilão&C&9Página &P de &N&R&9Impresso em &D' };
