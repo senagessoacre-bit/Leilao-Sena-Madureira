@@ -234,7 +234,7 @@ function renderFotos() {
     return '<div class="foto">' + (u ? '<img src="' + esc(u) + '" alt="Foto ' + (i + 1) + '" data-zoom="' + esc(p) + '">' : '') +
       '<button type="button" class="rm" data-rmf="' + esc(p) + '" aria-label="Remover foto ' + (i + 1) + '">×</button></div>';
   }).join('');
-  if (S.draft.fotos.length < MAX_FOTOS) h += '<label class="add-foto" for="f-fotos"><strong>+</strong>Adicionar fotos</label>';
+  if (S.draft.fotos.length < MAX_FOTOS) h += '<label class="add-foto" for="f-camera"><strong>◉</strong>Tirar foto</label><label class="add-foto" for="f-fotos"><strong>+</strong>Escolher da galeria</label>';
   $('#fotos').innerHTML = h;
 }
 function redimensionar(file) {
@@ -250,8 +250,7 @@ function redimensionar(file) {
     img.src = u;
   });
 }
-$('#f-fotos').addEventListener('change', async function (e) {
-  var files = Array.prototype.slice.call(e.target.files); e.target.value = '';
+async function enviarFotos(files) {
   if (!files.length) return;
   var vaga = MAX_FOTOS - S.draft.fotos.length;
   if (files.length > vaga) { files = files.slice(0, vaga); toast('Limite de ' + MAX_FOTOS + ' fotos por cadastro.'); }
@@ -269,6 +268,12 @@ $('#f-fotos').addEventListener('change', async function (e) {
   }
   S.uploading = false;
   st.textContent = falhas ? (falhas + ' foto' + (falhas > 1 ? 's não foram enviadas' : ' não foi enviada') + '. Tente de novo.') : '';
+}
+['f-fotos', 'f-camera'].forEach(function (id) {
+  document.getElementById(id).addEventListener('change', function (e) {
+    var files = Array.prototype.slice.call(e.target.files); e.target.value = '';
+    enviarFotos(files);
+  });
 });
 $('#fotos').addEventListener('click', function (e) {
   var rm = e.target.closest('[data-rmf]');
