@@ -29,8 +29,24 @@ function hoje() { var d = new Date(); return d.getFullYear() + '-' + String(d.ge
 function fmtData(s) { if (!s) return ''; var p = String(s).slice(0, 10).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : s; }
 function loadPrefs() { try { return JSON.parse(localStorage.getItem('vl:prefs') || '{}') || {}; } catch (e) { return {}; } }
 function savePrefs(p) { try { localStorage.setItem('vl:prefs', JSON.stringify(p)); } catch (e) {} }
+var SITUACOES = ['Conservado', 'Regular', 'Sucata aproveitável', 'Sucata inservível'];
+var UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
+function fmtMoeda(n) {
+  if (n === null || n === undefined || n === '' || isNaN(Number(n))) return '';
+  return Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function parseMoeda(t) {
+  t = String(t == null ? '' : t).replace(/R\$|\s/g, '');
+  if (!t) return null;
+  if (t.indexOf(',') >= 0) t = t.replace(/\./g, '').replace(',', '.');
+  else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+  if (!/^\d+(\.\d+)?$/.test(t)) return NaN;
+  return Math.round(parseFloat(t) * 100) / 100;
+}
 function novo() {
-  return { id: uuid(), tipo: 'veiculo', placa: '', chassi: '', modelo: '', ano: '', fotos: [], novas: [], defeitos: [], obs: '', vistoriador: loadPrefs().vistoriador || '' };
+  var p = loadPrefs();
+  return { id: uuid(), tipo: 'veiculo', placa: '', chassi: '', modelo: '', ano: '', cor: '', motor: '', lote: '', situacao: '', uf: p.uf || 'AC', detran: '0,00', valor: '',
+    fotos: [], novas: [], defeitos: [], obs: '', vistoriador: p.vistoriador || '' };
 }
 
 var S = {
@@ -130,11 +146,16 @@ function card(r) {
   var capa = fs.length && urlFoto(fs[0]);
   var h = '<details class="rep" data-id="' + esc(r.id) + '"' + open + '><summary>' +
     '<div class="thumb">' + (capa ? '<img src="' + esc(capa) + '" alt="Foto de ' + esc(r.placa) + '" loading="lazy">' : (fs.length ? '…' : 'Sem foto')) + '</div>' +
-    '<div class="rep-main"><div class="rep-line"><span class="plate-tag">' + esc(r.placa) + '</span><span class="pill t">' + t.nome + '</span></div>' +
+    '<div class="rep-main"><div class="rep-line"><span class="plate-tag">' + esc(r.placa) + '</span><span class="pill t">' + t.nome + '</span>' + (r.lote ? '<span class="pill ok">Lote ' + esc(r.lote) + '</span>' : '') + '</div>' +
     '<div class="rep-desc">' + esc(r.modelo) + ' · ' + esc(r.ano) + '</div>' +
     '<div class="rep-meta num">' + (ds.length ? ds.length + ' defeito' + (ds.length > 1 ? 's' : '') : 'Sem defeitos aparentes') + ' · ' + fs.length + ' foto' + (fs.length === 1 ? '' : 's') + '</div></div></summary>';
   h += '<div class="rep-body"><dl class="kv"><div><dt>Chassi</dt><dd style="font-family:var(--font-mono);letter-spacing:.06em">' + esc(r.chassi) + '</dd></div>' +
-    '<div><dt>Ano</dt><dd>' + esc(r.ano) + '</dd></div><div><dt>Vistoria</dt><dd>' + fmtData(r.data) + (r.vistoriador ? ' por ' + esc(r.vistoriador) : '') + '</dd></div></dl>';
+    '<div><dt>Ano</dt><dd>' + esc(r.ano) + '</dd></div><div><dt>Cor</dt><dd>' + esc(r.cor || '—') + '</dd></div>' +
+    '<div><dt>Motor</dt><dd style="font-family:var(--font-mono);letter-spacing:.06em">' + esc(r.motor || '—') + '</dd></div>' +
+    '<div><dt>Situação</dt><dd>' + esc(r.situacao || '—') + '</dd></div><div><dt>UF</dt><dd>' + esc(r.uf || '—') + '</dd></div>' +
+    '<div><dt>Detran</dt><dd class="num">' + (r.detran == null ? '—' : 'R$ ' + fmtMoeda(r.detran)) + '</dd></div>' +
+    '<div><dt>Valor inicial para conserto</dt><dd class="num">' + (r.valor_conserto == null ? '—' : 'R$ ' + fmtMoeda(r.valor_conserto)) + '</dd></div>' +
+    '<div><dt>Vistoria</dt><dd>' + fmtData(r.data) + (r.vistoriador ? ' por ' + esc(r.vistoriador) : '') + '</dd></div></dl>';
   if (fs.length) h += '<div><h3 class="sub">Fotos</h3><div class="fotos">' + fs.map(function (p, i) {
     var u = urlFoto(p);
     return '<div class="foto">' + (u ? '<img src="' + esc(u) + '" alt="Foto ' + (i + 1) + ' de ' + esc(r.placa) + '" loading="lazy" data-zoom="' + esc(p) + '">' : '') + '</div>';
@@ -155,7 +176,7 @@ function filtrados() {
   var q = S.busca.trim().toLowerCase().replace(/[\s-]/g, '');
   return S.reports.filter(function (r) {
     if (S.ft !== 'todos' && r.tipo !== S.ft) return false;
-    if (q) { var hay = ((r.placa || '') + (r.chassi || '') + (r.modelo || '')).toLowerCase().replace(/[\s-]/g, ''); if (hay.indexOf(q) < 0) return false; }
+    if (q) { var hay = ((r.placa || '') + (r.chassi || '') + (r.modelo || '') + (r.lote ? 'lote' + r.lote : '')).toLowerCase().replace(/[\s-]/g, ''); if (hay.indexOf(q) < 0) return false; }
     return true;
   });
 }
@@ -211,16 +232,28 @@ function preencher() {
   var d = S.draft;
   $('#f-placa').value = d.placa; $('#f-chassi').value = d.chassi; $('#f-modelo').value = d.modelo; $('#f-ano').value = d.ano;
   $('#f-vistoriador').value = d.vistoriador; $('#f-obs').value = d.obs;
+  $('#f-cor').value = d.cor; $('#f-motor').value = d.motor; $('#f-lote').value = d.lote;
+  $('#f-situacao').value = d.situacao; $('#f-uf').value = d.uf; $('#f-detran').value = d.detran; $('#f-valor').value = d.valor;
   syncTipo(); renderFotos(); renderDefeitos();
   var ae = $('#aviso-edit');
   if (S.editId) { ae.hidden = false; ae.textContent = 'Editando o cadastro de ' + ((S.editBase && S.editBase.placa) || '') + '. As alterações substituem o cadastro salvo.'; } else ae.hidden = true;
   $('#btn-enviar').textContent = S.editId ? 'Salvar alterações' : 'Salvar cadastro';
   $('#btn-limpar').textContent = S.editId ? 'Cancelar edição' : 'Limpar formulário';
 }
-var CAMPOS = { 'f-placa': 'placa', 'f-chassi': 'chassi', 'f-modelo': 'modelo', 'f-ano': 'ano', 'f-vistoriador': 'vistoriador', 'f-obs': 'obs' };
+$('#f-situacao').innerHTML = '<option value="">Selecione</option>' + SITUACOES.map(function (x) { return '<option>' + x + '</option>'; }).join('');
+$('#f-uf').innerHTML = UFS.map(function (x) { return '<option>' + x + '</option>'; }).join('');
+['f-detran', 'f-valor'].forEach(function (id) {
+  document.getElementById(id).addEventListener('blur', function (e) {
+    var v = parseMoeda(e.target.value);
+    if (v !== null && !isNaN(v)) { e.target.value = fmtMoeda(v); S.draft[CAMPOS[id]] = e.target.value; }
+  });
+});
+var CAMPOS = { 'f-placa': 'placa', 'f-chassi': 'chassi', 'f-modelo': 'modelo', 'f-ano': 'ano', 'f-vistoriador': 'vistoriador', 'f-obs': 'obs',
+  'f-cor': 'cor', 'f-motor': 'motor', 'f-lote': 'lote', 'f-situacao': 'situacao', 'f-uf': 'uf', 'f-detran': 'detran', 'f-valor': 'valor' };
 Object.keys(CAMPOS).forEach(function (id) {
   var el = document.getElementById(id);
-  el.addEventListener('input', function () { S.draft[CAMPOS[id]] = el.value; el.removeAttribute('aria-invalid'); });
+  var ev = el.tagName === 'SELECT' ? 'change' : 'input';
+  el.addEventListener(ev, function () { S.draft[CAMPOS[id]] = el.value; el.removeAttribute('aria-invalid'); });
 });
 $('#seg-tipo').addEventListener('click', function (e) {
   var b = e.target.closest('button[data-t]'); if (!b) return;
@@ -336,6 +369,15 @@ function validar() {
   else if (S.reports.some(function (r) { return limpo(r.chassi) === ch && r.id !== S.editId; })) bad('f-chassi', 'Já existe um cadastro com este chassi. Abra-o na lista e use Editar.');
   if (!d.modelo.trim()) bad('f-modelo', 'Informe a marca e o modelo.');
   if (!/^(19|20)\d{2}(\s*\/\s*(19|20)\d{2})?$/.test(d.ano.trim())) bad('f-ano', 'Informe o ano com 4 dígitos, como 2021 ou 2020/2021.');
+  if (!d.cor.trim()) bad('f-cor', 'Informe a cor.');
+  if (!d.motor.trim()) bad('f-motor', 'Informe o número do motor.');
+  if (!d.situacao) bad('f-situacao', 'Escolha a situação.');
+  if (!d.uf) bad('f-uf', 'Escolha a UF.');
+  var dt = parseMoeda(d.detran);
+  if (d.detran.trim() && (isNaN(dt) || dt < 0)) bad('f-detran', 'Informe o valor do Detran em reais, como 0,00.');
+  var vc = parseMoeda(d.valor);
+  if (vc === null) bad('f-valor', 'Informe o valor inicial para conserto.');
+  else if (isNaN(vc) || vc < 0) bad('f-valor', 'Informe o valor inicial para conserto em reais, como 7.000,00.');
   if (!d.fotos.length) erros.push('Adicione ao menos uma foto.');
   if (!d.vistoriador.trim()) bad('f-vistoriador', 'Informe quem fez a vistoria.');
   d.defeitos.forEach(function (x) {
@@ -354,6 +396,8 @@ $('#p-novo').addEventListener('submit', async function (e) {
   var d = S.draft, base = S.editBase;
   var row = {
     tipo: d.tipo, placa: d.placa.trim().toUpperCase(), chassi: limpo(d.chassi), modelo: d.modelo.trim(), ano: d.ano.trim().replace(/\s/g, ''),
+    cor: d.cor.trim(), motor: d.motor.trim().toUpperCase(), lote: d.lote.trim(), situacao: d.situacao, uf: d.uf,
+    detran: d.detran.trim() ? parseMoeda(d.detran) : 0, valor_conserto: parseMoeda(d.valor),
     fotos: d.fotos.slice(),
     defeitos: d.defeitos.map(function (x) { return { id: x.id, item: x.item.trim(), gravidade: x.gravidade, descricao: x.descricao.trim() }; }),
     obs: d.obs.trim(), vistoriador: d.vistoriador.trim(), atualizado_em: new Date().toISOString()
@@ -372,7 +416,7 @@ $('#p-novo').addEventListener('submit', async function (e) {
   var antigas = base ? (base.fotos || []) : [];
   descartar(antigas.filter(function (p) { return d.fotos.indexOf(p) < 0; }));
   descartar(d.novas.filter(function (p) { return d.fotos.indexOf(p) < 0; }));
-  savePrefs({ vistoriador: row.vistoriador });
+  savePrefs({ vistoriador: row.vistoriador, uf: row.uf });
   S.openIds[editou ? S.editId : d.id] = true;
   S.editId = null; S.editBase = null; S.draft = novo(); preencher();
   S.view = 'lista'; await carregar(); render();
@@ -398,7 +442,9 @@ async function acoes(e) {
     var r = S.reports.find(function (x) { return x.id === rid; }); if (!r) return;
     await garantirUrls(r.fotos);
     S.editId = r.id; S.editBase = r;
-    S.draft = { id: r.id, tipo: r.tipo, placa: r.placa, chassi: r.chassi, modelo: r.modelo, ano: r.ano, fotos: (r.fotos || []).slice(), novas: [],
+    S.draft = { id: r.id, tipo: r.tipo, placa: r.placa, chassi: r.chassi, modelo: r.modelo, ano: r.ano,
+      cor: r.cor || '', motor: r.motor || '', lote: r.lote || '', situacao: r.situacao || '', uf: r.uf || 'AC',
+      detran: r.detran == null ? '0,00' : fmtMoeda(r.detran), valor: r.valor_conserto == null ? '' : fmtMoeda(r.valor_conserto), fotos: (r.fotos || []).slice(), novas: [],
       defeitos: (r.defeitos || []).map(function (x) { return { id: x.id, item: x.item, gravidade: x.gravidade, descricao: x.descricao }; }), obs: r.obs || '', vistoriador: r.vistoriador || '' };
     S.view = 'novo'; preencher(); render(); window.scrollTo(0, 0);
   } else if (act === 'del') { S.confirmDel = rid; renderLista(); }
