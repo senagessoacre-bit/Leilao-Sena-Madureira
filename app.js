@@ -143,7 +143,7 @@ function card(r) {
     return '<div class="d-item"><div class="rep-line"><strong>' + esc(d.item) + '</strong><span class="pill g-' + esc(d.gravidade) + '">' + esc(GNOME[d.gravidade] || '') + '</span></div><p>' + esc(d.descricao) + '</p></div>';
   }).join('') + '</div></div>';
   if (r.obs) h += '<div><h3 class="sub">Observações</h3><p style="margin:0;overflow-wrap:anywhere;white-space:pre-wrap">' + esc(r.obs) + '</p></div>';
-  h += '<div class="actions"><button type="button" class="btn sm" data-act="editar" data-r="' + esc(r.id) + '">Editar</button>';
+  h += '<div class="actions"><button type="button" class="btn sm primary" data-act="ficha" data-r="' + esc(r.id) + '">Gerar relatório (Excel)</button><button type="button" class="btn sm" data-act="editar" data-r="' + esc(r.id) + '">Editar</button>';
   if (r.criado_por === S.userId) {
     if (S.confirmDel === r.id) h += '<span>Excluir este cadastro?</span><button type="button" class="btn sm danger" data-act="del-ok" data-r="' + esc(r.id) + '">Sim, excluir</button><button type="button" class="btn sm ghost" data-act="del-no">Cancelar</button>';
     else h += '<button type="button" class="btn sm danger ghost" data-act="del" data-r="' + esc(r.id) + '">Excluir</button>';
@@ -151,6 +151,42 @@ function card(r) {
   return h + '</div></div></details>';
 }
 
+function filtrados() {
+  var q = S.busca.trim().toLowerCase().replace(/[\s-]/g, '');
+  return S.reports.filter(function (r) {
+    if (S.ft !== 'todos' && r.tipo !== S.ft) return false;
+    if (q) { var hay = ((r.placa || '') + (r.chassi || '') + (r.modelo || '')).toLowerCase().replace(/[\s-]/g, ''); if (hay.indexOf(q) < 0) return false; }
+    return true;
+  });
+}
+function descricaoFiltro() {
+  var p = [];
+  if (S.ft !== 'todos') p.push(S.ft === 'veiculo' ? 'somente veículos' : 'somente máquinas');
+  if (S.busca.trim()) p.push('busca: "' + S.busca.trim() + '"');
+  return p.join(' · ');
+}
+var gerando = false;
+async function gerar(tipo, rid, btn) {
+  if (gerando) return;
+  if (!window.Relatorio) { toast('O gerador de relatório não carregou. Atualize a página com Ctrl+F5.'); return; }
+  gerando = true;
+  var rot = btn.textContent; btn.disabled = true;
+  var ctx = { sb: sb, bucket: BUCKET, progresso: function (t) { btn.textContent = t; } };
+  try {
+    if (tipo === 'ficha') {
+      var r = S.reports.find(function (x) { return x.id === rid; });
+      if (!r) return;
+      await window.Relatorio.ficha(r, ctx);
+    } else {
+      var lista = filtrados();
+      if (!lista.length) { toast('Não há cadastros para o relatório.'); return; }
+      await window.Relatorio.geral(lista, ctx, descricaoFiltro());
+    }
+    toast('Relatório gerado. Confira a pasta de downloads.');
+  } catch (err) {
+    toast('Não foi possível gerar o relatório. ' + (err && err.message ? err.message : ''));
+  } finally { gerando = false; btn.disabled = false; btn.textContent = rot; }
+}
 function renderLista() {
   var q = S.busca.trim().toLowerCase().replace(/[\s-]/g, '');
   var rs = S.reports.filter(function (r) {
@@ -370,6 +406,7 @@ async function acoes(e) {
     else if (!res.data || !res.data.length) toast('Só quem fez o cadastro pode excluí-lo.');
     else { descartar(rr ? rr.fotos : []); toast('Cadastro excluído.'); await carregar(); }
     renderLista();
+  } else if (act === 'ficha' || act === 'geral') { await gerar(act, rid, b);
   } else if (act === 'exportar') exportar();
   else if (act === 'atualizar') { await carregar(); toast('Lista atualizada.'); }
 }
@@ -377,7 +414,8 @@ $('#p-lista').addEventListener('click', acoes);
 $('#lista').addEventListener('toggle', function (e) {
   var d = e.target; if (d.tagName !== 'DETAILS') return; var id = d.getAttribute('data-id');
   if (d.open) {
-    S.openIds[id] = true;
+    S.openIds = {}; S.openIds[id] = true;
+    $$('details.rep[open]', $('#lista')).forEach(function (o) { if (o !== d) o.open = false; });
     var r = S.reports.find(function (x) { return x.id === id; });
     if (r) garantirUrls(r.fotos).then(function () { if (S.openIds[id]) renderLista(); });
   } else delete S.openIds[id];
