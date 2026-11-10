@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Vistoria de Leilão</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
-<link rel="stylesheet" href="styles.css?v=8">
+<link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
 <div class="wrap">
@@ -62,9 +62,23 @@
           <div class="field"><label for="f-placa" id="l-placa">Placa</label><input type="text" id="f-placa" class="mono" placeholder="ABC-1D23" maxlength="12"></div>
           <div class="field"><label for="f-chassi">Chassi</label><input type="text" id="f-chassi" class="mono" placeholder="9BWZZZ377VT004251" maxlength="25" autocapitalize="characters"></div>
           <div class="field"><label for="f-modelo">Marca e modelo</label><input type="text" id="f-modelo" placeholder="Ex.: Toyota Hilux CD 4x4" maxlength="80"></div>
-          <div class="field"><label for="f-ano">Ano</label><input type="text" id="f-ano" inputmode="numeric" placeholder="Ex.: 2021 ou 2020/2021" maxlength="9"></div>
+          <div class="field"><label for="f-ano">Ano</label><input type="text" id="f-ano" inputmode="numeric" placeholder="Ex.: 2009/2010" maxlength="9"></div>
+          <div class="field"><label for="f-cor">Cor</label><input type="text" id="f-cor" placeholder="Ex.: Branca" maxlength="30"></div>
+          <div class="field"><label for="f-motor">Motor</label><input type="text" id="f-motor" class="mono" placeholder="Número do motor" maxlength="30"></div>
         </div>
         <p class="hint" id="hint-chassi">O chassi do veículo tem 17 letras e números, sem I, O e Q.</p>
+      </section>
+
+      <section class="sec" aria-labelledby="h-leilao">
+        <h2 id="h-leilao">Dados do leilão</h2>
+        <div class="grid">
+          <div class="field"><label for="f-lote">Lote</label><input type="text" id="f-lote" inputmode="numeric" placeholder="Ex.: 1 (opcional)" maxlength="10"></div>
+          <div class="field"><label for="f-situacao">Situação</label><select id="f-situacao"></select></div>
+          <div class="field"><label for="f-uf">UF</label><select id="f-uf"></select></div>
+          <div class="field"><label for="f-detran">Detran (R$)</label><input type="text" id="f-detran" inputmode="decimal" placeholder="0,00"></div>
+          <div class="field"><label for="f-valor">Valor inicial para conserto (R$)</label><input type="text" id="f-valor" inputmode="decimal" placeholder="Ex.: 7.000,00"></div>
+        </div>
+        <p class="hint">Detran: débitos e taxas do órgão, em reais. Deixe em 0,00 se não houver.</p>
       </section>
 
       <section class="sec" aria-labelledby="h-fotos">
@@ -117,8 +131,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"><\/script>')</script>
-<script src="config.js?v=8"></script>
-<script src="relatorio.js?v=8"></script>
-<script src="app.js?v=8"></script>
+<script src="config.js?v=9"></script>
+<script src="relatorio.js?v=9"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
