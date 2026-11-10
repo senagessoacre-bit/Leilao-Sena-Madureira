@@ -33,6 +33,7 @@ async function exceljs() {
 function fmtData(s) { if (!s) return ''; var p = String(s).slice(0, 10).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : s; }
 function dataArq() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function agoraTxt() { return new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }); }
+function moeda(n) { return (n === null || n === undefined || n === '' || isNaN(Number(n))) ? '—' : 'R$ ' + Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function nomeAba(s) { return String(s).replace(/[\\\/\?\*\[\]:]/g, '').slice(0, 31) || 'Relatório'; }
 function nomeArq(s) { return String(s).replace(/[^A-Za-z0-9_-]/g, ''); }
 
@@ -127,11 +128,14 @@ async function ficha(r, ctx) {
   espaco(ws, 8);
 
   secao(ws, 'IDENTIFICAÇÃO');
-  par(ws, 'Tipo', t.nome, 'Ano', r.ano);
-  par(ws, t.placa, r.placa, 'Data da vistoria', fmtData(r.data));
-  cheia(ws, 'Chassi', r.chassi, { mono: true });
+  par(ws, 'Lote', r.lote || '—', 'Tipo', t.nome);
+  par(ws, t.placa, r.placa, 'Ano', r.ano);
   cheia(ws, 'Marca e modelo', r.modelo);
-  cheia(ws, 'Vistoriador', r.vistoriador || '—');
+  cheia(ws, 'Chassi ou série', r.chassi, { mono: true });
+  par(ws, 'Cor', r.cor || '—', 'Motor', r.motor || '—');
+  par(ws, 'Situação', r.situacao || '—', 'UF', r.uf || '—');
+  par(ws, 'Detran', moeda(r.detran), 'Valor inicial para conserto', moeda(r.valor_conserto));
+  par(ws, 'Vistoriador', r.vistoriador || '—', 'Data da vistoria', fmtData(r.data));
   espaco(ws, 8);
 
   var ds = r.defeitos || [];
@@ -217,45 +221,63 @@ async function ficha(r, ctx) {
 }
 
 /* ---------- relatório geral (lista) ---------- */
+function ordemLote(a, b) {
+  var la = String(a.lote || '').trim(), lb = String(b.lote || '').trim();
+  if (la && !lb) return -1; if (!la && lb) return 1;
+  if (la && lb) { var c = la.localeCompare(lb, 'pt-BR', { numeric: true }); if (c) return c; }
+  return String(a.criado_em || '').localeCompare(String(b.criado_em || ''));
+}
 async function geral(lista, ctx, filtro) {
   if (ctx.progresso) ctx.progresso('Preparando…');
   var X = await exceljs();
   var wb = new X.Workbook(); wb.creator = 'Vistoria de Leilão'; wb.created = new Date();
-  var ws = wb.addWorksheet('Relação de itens');
-  ws.columns = [{ width: 5 }, { width: 10 }, { width: 13 }, { width: 22 }, { width: 28 }, { width: 10 }, { width: 52 }, { width: 7 }, { width: 20 }, { width: 11 }];
-  var NC = ws.columns.length;
+  var ws = wb.addWorksheet('Relação de lotes');
+  var COLS = [
+    ['LOTE', 7], ['MARCA E MODELO', 26], ['PLACA', 12], ['CHASSI / SÉRIE', 22], ['ANO', 10], ['COR', 11],
+    ['MOTOR', 16], ['SITUAÇÃO', 15], ['DETRAN (R$)', 11], ['UF', 5], ['VALOR INICIAL PARA CONSERTO (R$)', 17], ['DEFEITOS', 44]
+  ];
+  ws.columns = COLS.map(function (c) { return { width: c[1] }; });
+  var NC = COLS.length;
+  lista = lista.slice().sort(ordemLote);
 
   linhaMesclada(ws, 'RELATÓRIO GERAL DE VISTORIA PARA LEILÃO', { size: 18, bold: true, align: 'center', h: 32 });
   var totalDef = lista.reduce(function (n, r) { return n + (r.defeitos || []).length; }, 0);
   var comDef = lista.filter(function (r) { return (r.defeitos || []).length; }).length;
+  var somaConserto = lista.reduce(function (n, r) { return n + (Number(r.valor_conserto) || 0); }, 0);
   linhaMesclada(ws, 'Gerado em ' + agoraTxt() + ' · ' + lista.length + ' ' + (lista.length === 1 ? 'item' : 'itens') + (filtro ? ' (' + filtro + ')' : ''), { size: 10, italic: true, color: CINZA, align: 'center', h: 18 });
   espaco(ws, 8);
 
-  var hd = ws.addRow(['Nº', 'Tipo', 'Placa ou prefixo', 'Chassi', 'Marca e modelo', 'Ano', 'Defeitos', 'Fotos', 'Vistoriador', 'Data']);
+  var hd = ws.addRow(COLS.map(function (c) { return c[0]; }));
   for (var c = 1; c <= NC; c++) {
     var cell = hd.getCell(c);
-    cell.font = { name: FONTE, size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.font = { name: FONTE, size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: VERDE } };
     cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     cell.border = borda();
   }
-  hd.height = 30;
+  hd.height = 44;
   var topo = hd.number;
+  var CENTRO = { 1: 1, 3: 1, 5: 1, 6: 1, 8: 1, 10: 1 };
 
   lista.forEach(function (r, i) {
     var ds = r.defeitos || [];
     var txt = ds.length ? ds.map(function (d) { return '• ' + d.item + ' (' + (GNOME[d.gravidade] || '') + '): ' + d.descricao; }).join('\n') : 'Sem defeitos aparentes';
-    var row = ws.addRow([i + 1, (TIPO[r.tipo] || {}).nome, r.placa, r.chassi, r.modelo, r.ano, txt, (r.fotos || []).length, r.vistoriador || '', fmtData(r.data)]);
+    var row = ws.addRow([r.lote || '', r.modelo, r.placa, r.chassi, r.ano, r.cor || '', r.motor || '', r.situacao || '',
+      r.detran == null ? '' : Number(r.detran), r.uf || '', r.valor_conserto == null ? '' : Number(r.valor_conserto), txt]);
     var fill = i % 2 ? 'FFF4F6F5' : null;
     for (var c2 = 1; c2 <= NC; c2++) {
       var ce = row.getCell(c2);
-      celula(ce, { v: 'top', h: (c2 === 1 || c2 === 2 || c2 === 6 || c2 === 8 || c2 === 10) ? 'center' : 'left', fill: fill, mono: c2 === 3 || c2 === 4, size: (c2 === 4) ? 10 : 11, color: (c2 === 7 && !ds.length) ? CINZA : TINTA, italic: c2 === 7 && !ds.length });
+      var num = c2 === 9 || c2 === 11;
+      celula(ce, { v: 'middle', h: num ? 'right' : (CENTRO[c2] ? 'center' : 'left'), fill: fill, mono: c2 === 4 || c2 === 7,
+        size: (c2 === 4 || c2 === 7 || c2 === 12) ? 10 : 11, color: (c2 === 12 && !ds.length) ? CINZA : TINTA, italic: c2 === 12 && !ds.length, bold: c2 === 11 });
+      if (num) ce.numFmt = '#,##0.00';
+      if (c2 === 1) ce.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     }
-    row.height = altura(Math.max(linhas(txt, 50), linhas(r.modelo, 26), linhas(r.vistoriador || '', 18), linhas(r.chassi, 20)), 24);
+    row.height = altura(Math.max(linhas(txt, 48), linhas(r.modelo, 27), linhas(r.chassi, 22), linhas(r.motor || '', 16), linhas(r.situacao || '', 15), linhas(r.cor || '', 11)), 30);
   });
 
   espaco(ws, 8);
-  var tot = ws.addRow(['Total: ' + lista.length + ' cadastros · ' + comDef + ' com defeitos · ' + totalDef + ' defeitos registrados']);
+  var tot = ws.addRow(['Total: ' + lista.length + ' cadastros · ' + comDef + ' com defeitos · ' + totalDef + ' defeitos registrados · valor inicial para conserto somado: ' + moeda(somaConserto)]);
   ws.mergeCells(tot.number, 1, tot.number, NC);
   tot.getCell(1).font = { name: FONTE, size: 11, bold: true, color: { argb: TINTA } };
   tot.getCell(1).alignment = { horizontal: 'right', vertical: 'middle' };
@@ -265,8 +287,8 @@ async function geral(lista, ctx, filtro) {
   ws.autoFilter = { from: { row: topo, column: 1 }, to: { row: topo, column: NC } };
   ws.pageSetup = {
     paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0,
-    horizontalCentered: true, printArea: 'A1:J' + ws.rowCount, printTitlesRow: topo + ':' + topo,
-    margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.6, header: 0.3, footer: 0.3 }
+    horizontalCentered: true, printArea: 'A1:L' + ws.rowCount, printTitlesRow: topo + ':' + topo,
+    margins: { left: 0.3, right: 0.3, top: 0.5, bottom: 0.6, header: 0.3, footer: 0.3 }
   };
   ws.headerFooter = { oddFooter: '&L&9Vistoria de Leilão&C&9Página &P de &N&R&9Impresso em &D' };
   if (ctx.progresso) ctx.progresso('Gerando arquivo…');
